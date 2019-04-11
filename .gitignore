@@ -1,3 +1,17 @@
+# Keras models
+*.h5
+*.hdf5
+*.json
+
+# Numpy weights
+*.npy
+
+# spicific file
+.DS_Store
+
+# specify folders
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

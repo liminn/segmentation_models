@@ -1,0 +1,29 @@
+### 1.Model
+MODEL:
+  MODEL_NAME: "PSPNet_temp"
+  INPUT_ROWS: 512
+  INPUT_COLS: 512
+  RESNET_LAYERS: 50
+  NUM_CLASSES: 3
+  PT_PATH: "pspnet50_ade20k" 
+
+### 2.Data
+DATA:
+  IMAGE_PATH: ""
+  LABEL_PATH: ""
+
+  NUM_TRAIN: 2109       
+  NUM_VALID: 263    
+
+### 3.Trainning 
+TRAINNING:
+  SPECIFIC_GPU_NUM: None
+  INITIAL_LR: 0.01
+  BATCH_SIZE: 4
+  PATIENCE: 2
+  EPOCHS: 200
+
+### 4.Checkpoint
+CHECKPOINT:
+  MODEL_DIR_BASE: 'checkpoint'
+  MODEL_DIR: 'PSPNet_temp_20190412'
