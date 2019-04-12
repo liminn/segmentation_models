@@ -18,11 +18,11 @@ import matplotlib.pyplot as plt
 from matplotlib import gridspec
 
 def set_npy_weights(weights_path, model):
-    npy_weights_path = os.path.join("pretrained_weights", "npy", weights_path + ".npy")
+    npy_weights_path = os.path.join("./segmentation_models/pspnet_temp/pretrained_weights", "npy", weights_path + ".npy")
     print(npy_weights_path)
-    json_path = os.path.join("pretrained_weights", "keras", weights_path + ".json")
+    json_path = os.path.join("./segmentation_models/pspnet_temp/pretrained_weights", "keras", weights_path + ".json")
     print(json_path)
-    h5_path = os.path.join("pretrained_weights", "keras", weights_path + ".h5")
+    h5_path = os.path.join("./segmentation_models/pspnet_temp/pretrained_weights", "keras", weights_path + ".h5")
     print(h5_path)
 
     print("Importing weights from %s" % npy_weights_path)
