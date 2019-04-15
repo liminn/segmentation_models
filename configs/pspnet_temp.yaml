@@ -9,11 +9,13 @@ MODEL:
 
 ### 2.Data
 DATA:
-  IMAGE_PATH: ""
-  LABEL_PATH: ""
-
-  NUM_TRAIN: 2109       
-  NUM_VALID: 263    
+  IMAGE_PATH: "./data/id_20190415/fg"
+  LABEL_PATH: "./data/id_20190415/alpha"
+  TRAIN_TXT_PATH: "./data/id_20190415/train_names.txt"
+  VALID_TXT_PATH: "./data/id_20190415/valid_names.txt"
+  TEST_TXT_PATH: "./data/id_20190415/test_names.txt"
+  NUM_TRAIN: 3218       
+  NUM_VALID: 402    
 
 ### 3.Trainning 
 TRAINNING:
@@ -26,4 +28,4 @@ TRAINNING:
 ### 4.Checkpoint
 CHECKPOINT:
   MODEL_DIR_BASE: 'checkpoint'
-  MODEL_DIR: 'PSPNet_temp_20190412'
+  MODEL_DIR: 'PSPNet_temp_20190415'

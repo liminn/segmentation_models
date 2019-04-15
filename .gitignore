@@ -10,7 +10,7 @@
 .DS_Store
 
 # specify folders
-
+data/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

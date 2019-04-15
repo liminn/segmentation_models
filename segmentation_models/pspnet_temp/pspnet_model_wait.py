@@ -14,29 +14,30 @@ import tensorflow as tf
 def BN(name=""):
     return BatchNormalization(momentum=0.95, name=name, epsilon=1e-5)
 
-class Interp(layers.Layer):
+# 之前该resize操作不支持(None,None)，故弃用，改为用lambda实现resize
+# class Interp(layers.Layer):
 
-    def __init__(self, new_size, **kwargs):
-        self.new_size = new_size
-        super(Interp, self).__init__(**kwargs)
+#     def __init__(self, new_size, **kwargs):
+#         self.new_size = new_size
+#         super(Interp, self).__init__(**kwargs)
 
-    def build(self, input_shape):
-        super(Interp, self).build(input_shape)
+#     def build(self, input_shape):
+#         super(Interp, self).build(input_shape)
 
-    def call(self, inputs, **kwargs):
-        # resized = tf.image.resize_nearest_neighbor(inputs, self.new_size)
-        new_height, new_width = self.new_size
-        resized = ktf.image.resize_images(inputs, [new_height, new_width],
-                                          align_corners=True)
-        return resized
+#     def call(self, inputs, **kwargs):
+#         # resized = tf.image.resize_nearest_neighbor(inputs, self.new_size)
+#         new_height, new_width = self.new_size
+#         resized = ktf.image.resize_images(inputs, [new_height, new_width],
+#                                           align_corners=True)
+#         return resized
 
-    def compute_output_shape(self, input_shape):
-         return tuple([None, self.new_size[0], self.new_size[1], input_shape[3]])
+#     def compute_output_shape(self, input_shape):
+#          return tuple([None, self.new_size[0], self.new_size[1], input_shape[3]])
 
-    def get_config(self):
-        config = super(Interp, self).get_config()
-        config['new_size'] = self.new_size
-        return config
+#     def get_config(self):
+#         config = super(Interp, self).get_config()
+#         config['new_size'] = self.new_size
+#         return config
 
 def residual_conv(prev, level, pad=1, lvl=1, sub_lvl=1, modify_stride=False):
     lvl = str(lvl)
@@ -182,6 +183,9 @@ def ResNet(inp, layers):
 # 金字塔池化模块中的层级操作
 # 若input_shape为(473,473)，则feature_map_shape为(60,60)
 def interp_block(prev_layer, level, feature_map_shape, input_shape):
+
+    shape = K.int_shape(prev_layer)[1:3]
+
     ### 依据不同的输入尺寸，定义各层级的平均池化操作的核大小及步长
     if input_shape == (473, 473):
         kernel_strides_map = {1: 60, 2: 30, 3: 20, 6: 10}
@@ -196,9 +200,13 @@ def interp_block(prev_layer, level, feature_map_shape, input_shape):
     # 针对(800, 800)，自定义金字塔池化模块
     elif input_shape == (704, 704):
         kernel_strides_map = {1: 88, 2: 44, 4: 22, 8:11 }
+    elif input_shape == (None, None):
+        kernel_strides_map = {1: 64, 2: 32, 4: 16, 8: 8}
     else:
-        print("Pooling parameters for input shape ", input_shape, " are not defined.")
-        exit(1)
+        kernel_strides_map = {1: 64, 2: 32, 4: 16, 8: 8}
+    # else:
+    #     print("Error: Pooling parameters for input shape ", input_shape, " are not defined.")
+    #     exit(1)
 
     names = ["conv5_3_pool" + str(level) + "_conv", 
              "conv5_3_pool" + str(level) + "_conv_bn"]
@@ -216,8 +224,11 @@ def interp_block(prev_layer, level, feature_map_shape, input_shape):
     prev_layer = Activation('relu')(prev_layer)
     
     # 将特征图的空间尺寸还原至金字塔池化模块的输入的空间尺寸，即(60,60,512)
-    prev_layer = Interp(feature_map_shape)(prev_layer)
-
+    #prev_layer = Interp(feature_map_shape)(prev_layer)
+    def resize(x, size):
+        return tf.image.resize_bilinear(x, size, align_corners=True)
+    prev_layer = Lambda(resize,output_shape=(shape[0],shape[1],512),arguments={'size':feature_map_shape})(prev_layer)
+   
     return prev_layer
 
 # 金字塔池化模块
@@ -227,8 +238,9 @@ def build_pyramid_pooling_module(res, input_shape):
     
     # 通过input_shape，计算出金字塔尺寸模块的输入特征的空间空间尺寸，即input_shape的1/8
     # feature_map_size = (60,60)
-    feature_map_size = tuple(int(ceil(input_dim / 8.0)) for input_dim in input_shape)
-    
+    # feature_map_size = tuple(int(ceil(input_dim / 8.0)) for input_dim in input_shape)
+    feature_map_size = K.shape(res)[1:3]
+
     # 层级1：对res进行平均池化到1x1x2048，降通道数至512，缩放回60x60x512
     interp_block1 = interp_block(res, 1, feature_map_size, input_shape)                  # 输出尺寸为(60,60，512)
     # 层级2：对res进行平均池化到2x2x2048，降通道数至512，缩放回60x60x512
@@ -243,13 +255,15 @@ def build_pyramid_pooling_module(res, input_shape):
 
     return res
 
-def build_pspnet(num_classes=3, resnet_layers=50, input_shape=(512,512)):
+def build_pspnet(num_classes, resnet_layers=50, input_shape=(512,512)):
     """Build PSPNet."""
     print("Building a PSPNet based on ResNet %i expecting inputs of shape %s and predicting %i classes" % (
         resnet_layers, input_shape, num_classes))
 
     # 定义输入尺寸
     inp = Input((input_shape[0], input_shape[1], 3))                          # 输入尺寸：(473,473,3)
+    shape = K.int_shape(inp)
+    size = K.shape(inp)[1:3]
 
     # 调用施加了膨胀卷积且经预训练的ResNet，输出特征图的空间尺寸为输入的1/8
     res = ResNet(inp, layers=resnet_layers)                                   # 输出尺寸：(60,60,2048)
@@ -268,7 +282,11 @@ def build_pspnet(num_classes=3, resnet_layers=50, input_shape=(512,512)):
     x = Conv2D(num_classes, (1, 1), strides=(1, 1), name="conv6")(x)           # 输出尺寸：(60,60,num_class)
 
     # 缩放特征图的空间尺寸至输入的空间尺寸
-    x = Interp([input_shape[0], input_shape[1]])(x)                           # 输出尺寸：(473,473,num_class)
+    # x = Interp([input_shape[0], input_shape[1]])(x)  
+    def resize(x, size):
+        return tf.image.resize_bilinear(x, size, align_corners=True)
+    x = Lambda(resize,output_shape=(shape[1],shape[2],num_classes),arguments={'size':size})(x)                         # 输出尺寸：(473,473,num_class)
+    
     x = Activation('softmax')(x)
 
     model = Model(inputs=inp, outputs=x)
@@ -277,6 +295,7 @@ def build_pspnet(num_classes=3, resnet_layers=50, input_shape=(512,512)):
 
 if __name__ == '__main__':
     with tf.device("/cpu:0"):
-        pspnet_model = build_pspnet(3, resnet_layers=101, input_shape=(512,512))
+        pspnet_model = build_pspnet(3, resnet_layers=50, input_shape=(518,518))
+        #pspnet_model = build_pspnet(3, resnet_layers=50, input_shape=(None,None))
         pspnet_model.summary()
     K.clear_session()

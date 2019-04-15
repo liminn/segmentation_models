@@ -10,8 +10,6 @@ from keras.utils import to_categorical
 import numpy as np
 from tensorflow.python.client import device_lib
 
-from config import num_classes, rgb_image_path, mask_img_path,img_rows, img_cols,unknown_code,min_scale,max_scale
-
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -73,7 +71,7 @@ def plot_training(history,pic_name='train_val_loss.png'):
     plt.legend(loc="upper left")
     plt.savefig(pic_name)
 
-def random_rescale_image_and_mask(image,mask,min_scale = min_scale, max_scale = max_scale):
+def random_rescale_image_and_mask(image,mask,min_scale = 0.5, max_scale = 2):
     rows = image.shape[0]
     cols = image.shape[1]
     # print("image.shape:{}".format(image.shape))
@@ -140,11 +138,11 @@ def generate_random_trimap(alpha):
     return img_trimap.astype(np.uint8)
 
 # Randomly crop (image, trimap) pairs centered on pixels in the unknown regions.
-def random_choice(trimap, crop_size=(img_rows, img_cols)):
+def random_choice(trimap, crop_size=(512, 512)):
     crop_height, crop_width = crop_size
     # np.where(arry)：输出arry中‘真’值的坐标(‘真’也可以理解为非零)
     # 返回：(array([]),array([])) 第一个array([])是行坐标，第二个array([])是列坐标
-    y_indices, x_indices = np.where(trimap == unknown_code)
+    y_indices, x_indices = np.where(trimap == 128)
     # 未知像素的数量
     num_unknowns = len(y_indices)
     x, y = 0, 0
@@ -158,7 +156,7 @@ def random_choice(trimap, crop_size=(img_rows, img_cols)):
         y = max(0, center_y - int(crop_height / 2))
     return x, y
 
-def safe_crop(mat, x, y, crop_size=(img_rows, img_cols)):
+def safe_crop(mat, x, y, crop_size=(512, 512)):
     # 例如：crop_height = 640，crop_width = 640
     crop_height, crop_width = crop_size
     # 对于alpha，先建立尺寸为(crop_height, crop_width)的全0数组
