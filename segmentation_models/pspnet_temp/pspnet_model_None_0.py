@@ -18,31 +18,31 @@ import cv2 as cv
 def BN(name=""):
     return BatchNormalization(momentum=0.95, name=name, epsilon=1e-5)
 
-class Interp(layers.Layer):
+# class Interp(layers.Layer):
 
-    def __init__(self, new_size, **kwargs):
-        self.new_size = new_size
-        super(Interp, self).__init__(**kwargs)
+#     def __init__(self, new_size, **kwargs):
+#         self.new_size = new_size
+#         super(Interp, self).__init__(**kwargs)
 
-    def build(self, input_shape):
-        super(Interp, self).build(input_shape)
+#     def build(self, input_shape):
+#         super(Interp, self).build(input_shape)
 
-    def call(self, inputs, **kwargs):
-        # new_height, new_width = self.new_size
-        #resized = ktf.image.resize_images(inputs, [new_height, new_width],
-        #                                   align_corners=True)
-        resized = tf.image.resize_bilinear(inputs, self.new_size)
-        #resized = ktf.image.resize_nearest_neighbor(inputs, self.new_size)
-        return resized
+#     def call(self, inputs, **kwargs):
+#         # new_height, new_width = self.new_size
+#         #resized = ktf.image.resize_images(inputs, [new_height, new_width],
+#         #                                   align_corners=True)
+#         resized = tf.image.resize_bilinear(inputs, self.new_size)
+#         #resized = ktf.image.resize_nearest_neighbor(inputs, self.new_size)
+#         return resized
 
-    # def compute_output_shape(self, input_shape):
-    #     return tuple([None, self.new_size[0], self.new_size[1], input_shape[3]])
+#     # def compute_output_shape(self, input_shape):
+#     #     return tuple([None, self.new_size[0], self.new_size[1], input_shape[3]])
 
-    def get_config(self):
-        config = super(Interp, self).get_config()
-        #config['new_size'] = self.new_size
-        config['new_size'] = (None,None)
-        return config
+#     def get_config(self):
+#         config = super(Interp, self).get_config()
+#         #config['new_size'] = self.new_size
+#         config['new_size'] = (None,None)
+#         return config
 
 def residual_conv(prev, level, pad=1, lvl=1, sub_lvl=1, modify_stride=False):
     lvl = str(lvl)
@@ -196,6 +196,7 @@ def interp_block(prev_layer, level, feature_map_shape, input_shape):
 
     shape = K.int_shape(prev_layer)[1:3]
 
+    # kernel_strides_map = {1: 88, 2: 44, 4: 22, 8: 11}
     kernel_strides_map = {1: 64, 2: 32, 4: 16, 8: 8}
 
     names = ["conv5_3_pool" + str(level) + "_conv", 
@@ -389,7 +390,7 @@ if __name__ == '__main__':
         #pspnet_model = build_pspnet(3, resnet_layers=50, input_shape=(None,None))
         pspnet_model = build_pspnet(3, resnet_layers=50, input_shape=(None,None))
         pspnet_model.summary()
-        pspnet_model.load_weights(t_net_weights_path)
+        #pspnet_model.load_weights(t_net_weights_path)
         print(1)
         # image_path = "./1_supervisely1826.jpg.jpg"
         # image_original = cv2.imread(image_path,1)

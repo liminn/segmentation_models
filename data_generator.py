@@ -7,8 +7,8 @@ import numpy as np
 from utils import utils
 from keras.utils import Sequence
 
-# Set specific config file
-cfg_path = "./configs/pspnet_temp.yaml"
+# set specific config file
+cfg_path = "./configs/fpn.yaml"
 with open(cfg_path) as fp:
     cfg = yaml.load(fp)
 
@@ -29,15 +29,13 @@ class TrainGen(Sequence):
         return int(np.ceil(len(self.names) / float(self.batch_size)))
 
     def __getitem__(self, idx):
-        # 每一个epoch，从前往后读取self.ids，依据id，读取self.names
-        # idx应为第几个batch，i为该次batch的起始点
         i = idx * self.batch_size
-        # length为当前batch的大小
-        length = min(self.batch_size, (len(self.names) - i))
-        batch_x = np.empty((length, self.img_rows, self.img_cols, 3), dtype=np.float32)
-        batch_y = np.empty((length, self.img_rows, self.img_cols, self.num_classes), dtype=np.uint8)
+        batch_length = min(self.batch_size, (len(self.names) - i))
+        batch_x = np.empty((batch_length, self.img_rows, self.img_cols, 3), dtype=np.float32)
+        batch_y = np.empty((batch_length, self.img_rows, self.img_cols, self.num_classes), dtype=np.uint8)
 
-        for i_batch in range(length):
+        for i_batch in range(batch_length):
+            # read image and mask(0~255)
             img_name = self.names[i]
             image_path = os.path.join(self.img_path, img_name)
             image = cv2.imread(image_path,1)
@@ -47,89 +45,45 @@ class TrainGen(Sequence):
             mask_path = os.path.join(self.label_path, mask_name)
             mask = cv2.imread(mask_path,0)
 
-            # 随机缩放
-            image, mask = utils.random_rescale_image_and_mask(image,mask)
+            # random crop
+            patch_size = (self.img_rows,self.img_cols)
+            image,mask = random_patch(image,mask,patch_size)
 
-            # 随机旋转并剪裁
-            if np.random.random_sample() > 0.5:
-                if np.random.random_sample() > 0.5:
-                    image_height, image_width = image.shape[0:2]
-                    angle = random.randint(0,10)
-                    image_rotated = utils.rotate_image(image, angle)
-                    image_rotated_cropped = utils.crop_around_center(
-                        image_rotated,
-                        *utils.largest_rotated_rect(
-                            image_width,
-                            image_height,
-                            math.radians(angle)
-                        )
-                    )
-                    image = image_rotated_cropped
-                    alpha_rotated = utils.rotate_image(mask, angle)
-                    alpha_rotated_cropped = utils.crop_around_center(
-                        alpha_rotated,
-                        *utils.largest_rotated_rect(
-                            image_width,
-                            image_height,
-                            math.radians(angle)
-                        )
-                    )
-                    mask = alpha_rotated_cropped
-                else:
-                    image_height, image_width = image.shape[0:2]
-                    angle = random.randint(350,360)
-                    image_rotated = utils.rotate_image(image, angle)
-                    image_rotated_cropped = utils.crop_around_center(
-                        image_rotated,
-                        *utils.largest_rotated_rect(
-                            image_width,
-                            image_height,
-                            math.radians(angle)
-                        )
-                    )
-                    image = image_rotated_cropped
-                    alpha_rotated = utils.rotate_image(mask, angle)
-                    alpha_rotated_cropped = utils.crop_around_center(
-                        alpha_rotated,
-                        *utils.largest_rotated_rect(
-                            image_width,
-                            image_height,
-                            math.radians(angle)
-                        )
-                    )
-                    mask = alpha_rotated_cropped
+            # random trimap: 0/255 -> 0/128/255
+            trimap = utils.random_trimap(mask)
             
-            # 实时处理alpha，得到trimap:128/0/255
-            trimap = utils.generate_random_trimap(mask)
-           
-            # 定义随机剪裁尺寸
-            crop_size = (self.img_rows,self.img_cols)
-            # # 获得剪裁的起始点，其目的是为了保证剪裁的图像中包含未知像素
-            x, y = utils.random_choice(trimap, crop_size)      
-            # # x = random.randint(0,image.shape[1])
-            # # y = random.randint(0,image.shape[0])
-
-            # 剪裁image，到指定剪裁尺寸crop_size
-            image = utils.safe_crop(image, x, y, crop_size)
-            # 剪裁trimap，到指定剪裁尺寸crop_size
-            trimap = utils.safe_crop(trimap, x, y, crop_size)
-
-            # 随机翻转
+            # random horizontaly flip
             if np.random.random_sample() > 0.5:
                 image = np.fliplr(image)
                 trimap = np.fliplr(trimap)
-            
-            #save the image/trimap crop patch
-            # patch_save_dir = "show_data_loader_20190415"
-            # if not os.path.exists(patch_save_dir):
-            #     os.makedirs(patch_save_dir)
-            # image_patch_path = patch_save_dir + '/' + img_name_prefix + '_image_' + str(i_batch) + '.png'
-            # trimap_patch_path = patch_save_dir + '/' + img_name_prefix + '_trimap_' + str(i_batch) + '.png'
-            # cv2.imwrite(image_patch_path,image)
-            # cv2.imwrite(trimap_patch_path,trimap)
 
-            batch_x[i_batch] = image/255.0
-            batch_y[i_batch] = utils.make_trimap_for_batch_y(trimap) 
+            # random rotation(90/180/270)
+            if np.random.random.random() > 0.5:
+                degree = random.randint(1,3)  # rotate 1/2/3 * 90 degrees
+                image = np.rot90(image, degree)
+                trimap = np.rot90(trimap, degree)
+
+            assert image.shape[:2] == trimap.shape[:2]
+
+            # save the image-trimap patch
+            pair_save_dir = cfg["CHECKPOINT"]["MODEL_DIR_BASE"]+'/'+cfg["CHECKPOINT"]["MODEL_DIR"]+'/'+cfg["CHECKPOINT"]["TRAIN_PAIR_DIR"]
+            if not os.path.exists(pair_save_dir):
+                os.makedirs(pair_save_dir)
+            pair_image_name = img_name_prefix + '_image.png'
+            pair_image_path = os.path.join(pair_save_dir,pair_image_name)
+            cv2.imwrite(pair_image_path,image)
+            pair_trimap_name = img_name_prefix + '_trimap.png'
+            pair_trimap_path = os.path.join(pair_save_dir,pair_trimap_name)
+            cv2.imwrite(pair_trimap_path,trimap)
+
+            # normalize image
+            image = image.astype(np.float32) / 255.0
+
+            # trimap one-hot encoding
+            trimap = utils.trimap_one_hot_encoding(trimap)
+            
+            batch_x[i_batch] = image
+            batch_y[i_batch] = trimap
 
             i += 1
 
@@ -138,15 +92,16 @@ class TrainGen(Sequence):
     def on_epoch_end(self):
         np.random.shuffle(self.names)
 
-class ValDataGen(Sequence):
+class ValidGen(Sequence):
     def __init__(self):
         filename = cfg["DATA"]["VALID_TXT_PATH"]
         with open(filename, 'r') as f:
             self.names = f.read().splitlines()
         np.random.shuffle(self.names)
-        self.batch_size = cfg["TRAINNING"]["BATCH_SIZE"]
-        self.img_rows = cfg["MODEL"]["INPUT_ROWS"]
-        self.img_cols = cfg["MODEL"]["INPUT_COLS"]
+        #self.batch_size = cfg["TRAINNING"]["BATCH_SIZE"]
+        self.batch_size = 1
+        # self.img_rows = cfg["MODEL"]["INPUT_ROWS"]
+        # self.img_cols = cfg["MODEL"]["INPUT_COLS"]
         self.num_classes = cfg["MODEL"]["NUM_CLASSES"]
         self.img_path = cfg["DATA"]["IMAGE_PATH"]
         self.label_path = cfg["DATA"]["LABEL_PATH"]
@@ -155,41 +110,56 @@ class ValDataGen(Sequence):
         return int(np.ceil(len(self.names) / float(self.batch_size)))
 
     def __getitem__(self, idx):
-        # 每一个epoch，从前往后读取self.ids，依据id，读取self.names
-        # idx应为第几个batch，i为该次batch的起始点
         i = idx * self.batch_size
         # length为当前batch的大小
-        length = min(self.batch_size, (len(self.names) - i))
-        batch_x = np.empty((length, self.img_rows, self.img_cols, 3), dtype=np.float32)
-        batch_y = np.empty((length, self.img_rows, self.img_cols, self.num_classes), dtype=np.uint8)
+        batch_length = min(self.batch_size, (len(self.names) - i))
+        batch_x = np.empty((batch_length, self.img_rows, self.img_cols, 3), dtype=np.float32)
+        batch_y = np.empty((batch_length, self.img_rows, self.img_cols, self.num_classes), dtype=np.uint8)
 
-        for i_batch in range(length):
-            ###normal
-            img_name = self.names[i] 
+        for i_batch in range(batch_length):
+            # read image and mask(0~255)
+            img_name = self.names[i]
             image_path = os.path.join(self.img_path, img_name)
             image = cv2.imread(image_path,1)
-
+        
             img_name_prefix = img_name.split('.')[0]
             mask_name = img_name_prefix+".png"
             mask_path = os.path.join(self.label_path, mask_name)
             mask = cv2.imread(mask_path,0)
 
-            # 实时处理alpha，得到trimap:128/0/255
-            trimap = utils.generate_random_trimap(mask)
+            # # pad to fixed size
+            # """
+            #     待改：此处待去除
+            #     因为：最好的valid方式一定是：batch为1，原尺寸输入，逐张进行valid
+            #     需要：模型支持(None,None,3)的输入
+            # """
+            # patch_size = (self.img_rows,self.img_cols)
+            # image,mask = pad_patch(image,mask,patch_size)
 
-            image = utils.pad_and_resize_to_target_size(image,self.img_rows, self.img_cols)
-            trimap = utils.pad_and_resize_mask_to_target_size(trimap,self.img_rows, self.img_cols)
+            # random trimap: 0/255 -> 0/128/255
+            trimap = utils.random_trimap(mask)
+            
+            assert image.shape[:2] == trimap.shape[:2]
+            
+            # save the image-trimap patch
+            pair_save_dir = cfg["CHECKPOINT"]["MODEL_DIR_BASE"]+'/'+cfg["CHECKPOINT"]["MODEL_DIR"]+'/'+cfg["CHECKPOINT"]["TRAIN_PAIR_DIR"]
+            if not os.path.exists(pair_save_dir):
+                os.makedirs(pair_save_dir)
+            pair_image_name = img_name_prefix + '_image.png'
+            pair_image_path = os.path.join(pair_save_dir,pair_image_name)
+            cv2.imwrite(pair_image_path,image)
+            pair_trimap_name = img_name_prefix + '_trimap.png'
+            pair_trimap_path = os.path.join(pair_save_dir,pair_trimap_name)
+            cv2.imwrite(pair_trismap_path,trimap)
+            
+            # normalize image
+            image = image.astype(np.float32) / 255.0
 
-            # patch_save_dir = "show_data_loader_valid_20190415"
-            # if not os.path.exists(patch_save_dir):
-            #     os.makedirs(patch_save_dir)
-            # image_patch_path = patch_save_dir + '/' + img_name_prefix + '_image_' + str(i_batch) + '.png'
-            # trimap_patch_path = patch_save_dir + '/' + img_name_prefix + '_trimap_' + str(i_batch) + '.png'
-            # cv2.imwrite(image_patch_path,image)
-            # cv2.imwrite(trimap_patch_path,trimap)
-
-            batch_x[i_batch] = image/255.0
-            batch_y[i_batch] = utils.make_trimap_for_batch_y(trimap) 
+            # trimap one-hot encoding
+            trimap = utils.trimap_one_hot_encoding(trimap)
+            
+            batch_x[i_batch] = image
+            batch_y[i_batch] = trimap
             
             i += 1
 
@@ -202,7 +172,7 @@ def train_gen():
     return TrainGen()
 
 def valid_gen():
-    return ValDataGen()
+    return ValidGen()
 
 if __name__ == '__main__':
     pass

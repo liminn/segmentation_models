@@ -57,6 +57,60 @@ def get_available_gpus():
 def get_available_cpus():
     return multiprocessing.cpu_count()
 
+# getting the number of CPUs
+def get_txt_length(txt_path):
+    with open(txt_path) as f:
+        names = f.read().splitlines()
+    return len(names)
+
+# randomly create patch
+def random_patch(image, mask,patch_size):
+    h, w = image.shape[:2]
+    max_size = max(h, w)
+    min_size = max_size // 2
+
+    sqr_img = np.zeros((max_size, max_size, 3), np.uint8)
+    sqr_mask = np.zeros((max_size, max_size), np.float32)
+
+    if h >= w:
+            sqr_img[:, (h - w) // 2: (h - w) // 2 + w] = image
+            sqr_mask[:, (h - w) // 2: (h - w) // 2 + w] = mask
+        else:
+            sqr_img[(w - h) // 2: (w - h) // 2 + h, :] = image
+            sqr_mask[(w - h) // 2: (w - h) // 2 + h, :] = mask
+
+    crop_size = random.randint(min_size, max_size)  # both value are inclusive
+    
+    x = random.randint(0, max_size - crop_size)  # 0 is inclusive
+    y = random.randint(0, max_size - crop_size)
+    image = sqr_img[y: y + crop_size, x: x + crop_size]
+    mask = sqr_bga[y: y + crop_size, x: x + crop_size]
+
+    image = cv2.resize(image, (patch_size[1], patch_size[0]), interpolation=cv2.INTER_CUBIC)
+    mask = cv2.resize(mask, (patch_size[1], patch_size[0]), interpolation=cv2.INTER_CUBIC)
+
+    return image,mask
+
+def pad_patch(image, mask,patch_size)
+    h, w = image.shape[:2]
+    max_size = max(h, w)
+    min_size = max_size // 2
+
+    sqr_img = np.zeros((max_size, max_size, 3), np.uint8)
+    sqr_mask = np.zeros((max_size, max_size), np.float32)
+
+    if h >= w:
+            sqr_img[:, (h - w) // 2: (h - w) // 2 + w] = image
+            sqr_mask[:, (h - w) // 2: (h - w) // 2 + w] = mask
+        else:
+            sqr_img[(w - h) // 2: (w - h) // 2 + h, :] = image
+            sqr_mask[(w - h) // 2: (w - h) // 2 + h, :] = mask
+
+    image = cv2.resize(image, (patch_size[1], patch_size[0]), interpolation=cv2.INTER_CUBIC)
+    mask = cv2.resize(mask, (patch_size[1], patch_size[0]), interpolation=cv2.INTER_CUBIC)
+
+    return image,mask
+
 # Plot the training and validation loss + accuracy
 def plot_training(history,pic_name='train_val_loss.png'):
     plt.style.use("ggplot")
@@ -88,41 +142,7 @@ def random_rescale_image_and_mask(image,mask,min_scale = 0.5, max_scale = 2):
     # print("mask.shape:{}".format(mask.shape))
     return image,mask
 
-def generate_random_trimap(alpha):
-    # ### 非0区域置为255，然后膨胀及收缩，多出的部分为128区域
-    # ### 优点：如果有一小撮头发为小于255，但大于0的，那通过该方法，128区域会覆盖到该一小撮头发部分
-    # mask = alpha.copy()                             # 0~255
-    # # 非纯背景置为255
-    # mask = ((mask!=0)*255).astype(np.float32)       # 0.0和255.0
-  
-    # kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
-
-    # # 如果尺寸过小(总面积小于500*500)，则减半膨胀和腐蚀的程度
-    # if(alpha.shape[0]* alpha.shape[1] < 250000):
-    #     dilate = cv2.dilate(mask, kernel, iterations=np.random.randint(5, 7))   # 膨胀少点
-    #     erode = cv2.erode(mask, kernel, iterations=np.random.randint(7, 10))    # 腐蚀多点
-    # else:
-    #     dilate = cv2.dilate(mask, kernel, iterations=np.random.randint(10, 15)) # 膨胀少点
-    #     erode = cv2.erode(mask, kernel, iterations=np.random.randint(15, 20))   # 腐蚀多点
-
-    # ### for循环生成trimap，特别慢
-    # # for row in range(mask.shape[0]):
-    # #     for col in range(mask.shape[1]):
-    # #         # 背景区域为第0类
-    # #         if(dilate[row,col]==255 and mask[row,col]==0):
-    # #             img_trimap[row,col]=128
-    # #         # 前景区域为第1类
-    # #         if(mask[row,col]==255 and erode[row,col]==0):
-    # #             img_trimap[row,col]=128
-
-    # ### 操作矩阵生成trimap，特别快
-    # # ((mask-erode)==255.0)*128  腐蚀掉的区域置为128
-    # # ((dilate-mask)==255.0)*128 膨胀出的区域置为128
-    # # + erode 整张图变为255/0/128
-    # img_trimap = ((mask-erode)==255.0)*128 + ((dilate-mask)==255.0)*128 + erode
-
-    # return img_trimap.astype(np.uint8)
-    
+def random_trimap(alpha):
     mask = alpha.copy()                                                         # 0~255
     # 非纯背景置为255
     mask = ((mask!=0)*255).astype(np.float32)                                   # 0.0和255.0
@@ -133,8 +153,8 @@ def generate_random_trimap(alpha):
     # 128/255/0
     img_trimap = ((mask-erode)==255.0)*128 + ((dilate-mask)==255.0)*128 + erode
     # 加上本来是128的区域
-    #bool_unkonw = (alpha!=255)*(alpha!=0)
-    #img_trimap = img_trimap*(1-bool_unkonw)+bool_unkonw*128
+    bool_unkonw = (alpha!=255)*(alpha!=0)
+    img_trimap = img_trimap*(1-bool_unkonw)+bool_unkonw*128
     return img_trimap.astype(np.uint8)
 
 # Randomly crop (image, trimap) pairs centered on pixels in the unknown regions.
@@ -182,18 +202,10 @@ def safe_crop(mat, x, y, crop_size=(512, 512)):
 
     return ret
 
-def make_trimap_for_batch_y(trimap):
-    for row in range(trimap.shape[0]):
-        for col in range(trimap.shape[1]):
-            # 背景区域为第0类
-            if(trimap[row,col]==0):
-                trimap[row,col]=0
-            # 前景区域为第1类
-            if(trimap[row,col]==255):
-                trimap[row,col]=1
-            # 128区域为第2类
-            if(trimap[row,col]==128): 
-                trimap[row,col]=2
+def trimap_one_hot_encoding(trimap):
+    trimap[trimap == 0] = 0
+    trimap[trimap == 255] = 1
+    trimap[trimap == 128] = 2
     trimap = to_categorical(trimap, 3) 
     return trimap
 
@@ -210,7 +222,8 @@ def make_mask_for_batch_y(mask):
     return mask
 
 def colorful(out):
-    result_rgb = np.empty((img_rows, img_cols, 3), dtype=np.uint8)
+    img_rows, img_cols= out.shape[0],out.shape[1]
+    result_rgb = np.empty((img_rows,img_cols, 3), dtype=np.uint8)
     for row in range(img_rows):
         for col in range(img_cols):
             # 背景区域为第0类
@@ -356,24 +369,55 @@ def crop_around_center(image, width, height):
     return image[y1:y2, x1:x2]
 
 def pad_and_resize_to_target_size(image, target_rows, target_cols,interpolation = cv2.INTER_LINEAR):
+    mat = np.zeros((target_rows, target_cols, 3), np.float32)
+    
     rows,cols = image.shape[0],image.shape[1]
     if rows>cols:
-        mat = np.zeros((rows, rows, 3), np.float32)
+        larger  = rows
+        ratio = target_rows/larger
     else:
-        mat = np.zeros((cols, cols, 3), np.float32)
-    mat[0:rows, 0:cols,:] = image
-    mat = cv2.resize(mat,(target_cols,target_rows),interpolation=interpolation)
+        larger  = cols
+        ratio = target_cols/larger
+    new_rows = int(np.round(rows*ratio))
+    new_cols = int(np.round(cols*ratio))
+    image_new = cv2.resize(image,(new_cols,new_rows),interpolation = cv2.INTER_LINEAR)
+
+    mat[0:new_rows, 0:new_cols,:] = image_new
+
     return mat.astype(np.uint8)
 
 def pad_and_resize_mask_to_target_size(image, target_rows, target_cols,interpolation = cv2.INTER_NEAREST):
+    mat = np.zeros((target_rows, target_cols, 3), np.float32)
+    
     rows,cols = image.shape[0],image.shape[1]
     if rows>cols:
-        mat = np.zeros((rows, rows), np.float32)
+        larger  = rows
+        ratio = target_rows/larger
     else:
-        mat = np.zeros((cols, cols), np.float32)
-    mat[0:rows, 0:cols] = image
-    mat = cv2.resize(mat,(target_cols,target_rows),interpolation=interpolation)
+        larger  = cols
+        ratio = target_cols/larger
+    new_rows = int(np.round(rows*ratio))
+    new_cols = int(np.round(cols*ratio))
+    image_new = cv2.resize(image,(new_cols,new_rows),interpolation = cv2.INTER_NEAREST)
+    
+    mat[0:new_rows, 0:new_cols,:] = image_new
+
     return mat.astype(np.uint8)
+
+def resize_to_target_size(image, target_rows, target_cols,interpolation =  cv2.INTER_LINEAR):
+    rows,cols = image.shape[0],image.shape[1]
+    if rows>cols:
+        larger  = rows
+        ratio = target_rows/larger
+    else:
+        larger  = cols
+        ratio = target_cols/larger
+    new_rows = int(np.round(rows*ratio))//16*16
+    new_cols = int(np.round(cols*ratio))//16*16
+    image_new = cv2.resize(image,(new_cols,new_rows),interpolation = cv2.INTER_LINEAR)
+    # image_new = cv2.resize(image,(target_rows,target_cols),interpolation = cv2.INTER_LINEAR)
+
+    return image_new
 
 def vis_segmentation(image, seg_map, save_path_name = "examples.png"):
   """Visualizes input image, segmentation map and overlay view."""

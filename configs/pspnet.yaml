@@ -1,11 +1,10 @@
 ### 1.Model
 MODEL:
-  MODEL_NAME: "PSPNet_temp"
+  MODEL_NAME: "PSPNet"
+  BACKBONE_NAME: "resnet50"
   INPUT_ROWS: 512
   INPUT_COLS: 512
-  RESNET_LAYERS: 50
   NUM_CLASSES: 3
-  PT_PATH: "pspnet50_ade20k" 
 
 ### 2.Data
 DATA:
@@ -14,8 +13,6 @@ DATA:
   TRAIN_TXT_PATH: "./data/id_20190415/train_names.txt"
   VALID_TXT_PATH: "./data/id_20190415/valid_names.txt"
   TEST_TXT_PATH: "./data/id_20190415/test_names.txt"
-  NUM_TRAIN: 3218       
-  NUM_VALID: 402    
 
 ### 3.Trainning 
 TRAINNING:
@@ -28,7 +25,9 @@ TRAINNING:
 ### 4.Checkpoint
 CHECKPOINT:
   MODEL_DIR_BASE: 'checkpoint'
-  MODEL_DIR: 'PSPNet_temp_20190415'
+  MODEL_DIR: 'PSPNet_20190428'
+  TRAIN_PAIR_DIR: 'vis_train_pair'
+  VALID_PAIR_DIR: 'vis_valid_pair'
 
 ### 5.Test
 TEST:

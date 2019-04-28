@@ -3,7 +3,6 @@ from ..utils import freeze_model
 from ..utils import legacy_support
 from ..backbones import get_backbone, get_feature_layers
 
-
 def _get_layer_by_factor(backbone_name, factor):
     feature_layers = get_feature_layers(backbone_name, n=3)
     if factor == 4:
@@ -14,7 +13,6 @@ def _get_layer_by_factor(backbone_name, factor):
         return feature_layers[-3]
     else:
         raise ValueError('Unsupported factor - `{}`, Use 4, 8 or 16.'.format(factor))
-
 
 def _shape_guard(factor, shape):
     h, w = shape[:2]
@@ -33,7 +31,6 @@ old_args_map = {
     'dropout': 'psp_dropout',
     'input_tensor': None,  # removed
 }
-
 
 @legacy_support(old_args_map)
 def PSPNet(backbone_name='vgg16',
