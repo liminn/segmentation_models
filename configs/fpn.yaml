@@ -8,27 +8,28 @@ MODEL:
 
 ### 2.Data
 DATA:
-  IMAGE_PATH: "./data/id_20190415/fg"
-  LABEL_PATH: "./data/id_20190415/alpha"
-  TRAIN_TXT_PATH: "./data/id_20190415/train_names.txt"
-  VALID_TXT_PATH: "./data/id_20190415/valid_names.txt"
-  TEST_TXT_PATH: "./data/id_20190415/test_names.txt"
+  IMAGE_PATH: "/home/datalab/ex_disk1/bulang/data/人像+证件照合格结果整理/image"
+  LABEL_PATH: "/home/datalab/ex_disk1/bulang/data/人像+证件照合格结果整理/alpha"
+  TRAIN_TXT_PATH: "/home/datalab/ex_disk1/bulang/data/人像+证件照合格结果整理/train_names.txt"
+  VALID_TXT_PATH: "/home/datalab/ex_disk1/bulang/data/人像+证件照合格结果整理/valid_names.txt"
+  TEST_TXT_PATH: "/home/datalab/ex_disk1/bulang/data/人像+证件照合格结果整理/test_names.txt"
 
 ### 3.Trainning 
 TRAINNING:
-  SPECIFIC_GPU_NUM: None
+  SPECIFIC_GPU_NUM: 1
   INITIAL_LR: 0.01
-  BATCH_SIZE: 4
+  BATCH_SIZE: 6
   PATIENCE: 2
   EPOCHS: 200
 
 ### 4.Checkpoint
 CHECKPOINT:
   MODEL_DIR_BASE: 'checkpoint'
-  MODEL_DIR: 'FPN_res50_20190428'
+  MODEL_DIR: 'FPN_res50_20190502'
   TRAIN_PAIR_DIR: 'vis_train_pair'
   VALID_PAIR_DIR: 'vis_valid_pair'
 
 ### 5.Test
 TEST:
-  TEST_RESULT_PATH: './inference'
+  CKPT_PATH: "./checkpoint/FPN_res50_20190502/model-66-0.1363.hdf5"
+  TEST_RESULT_DIR_BASE: 'inference_outout'

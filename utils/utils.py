@@ -73,25 +73,25 @@ def random_patch(image, mask,patch_size):
     sqr_mask = np.zeros((max_size, max_size), np.float32)
 
     if h >= w:
-            sqr_img[:, (h - w) // 2: (h - w) // 2 + w] = image
-            sqr_mask[:, (h - w) // 2: (h - w) // 2 + w] = mask
-        else:
-            sqr_img[(w - h) // 2: (w - h) // 2 + h, :] = image
-            sqr_mask[(w - h) // 2: (w - h) // 2 + h, :] = mask
+        sqr_img[:, (h - w) // 2: (h - w) // 2 + w] = image
+        sqr_mask[:, (h - w) // 2: (h - w) // 2 + w] = mask
+    else:
+        sqr_img[(w - h) // 2: (w - h) // 2 + h, :] = image
+        sqr_mask[(w - h) // 2: (w - h) // 2 + h, :] = mask
 
     crop_size = random.randint(min_size, max_size)  # both value are inclusive
     
     x = random.randint(0, max_size - crop_size)  # 0 is inclusive
     y = random.randint(0, max_size - crop_size)
     image = sqr_img[y: y + crop_size, x: x + crop_size]
-    mask = sqr_bga[y: y + crop_size, x: x + crop_size]
+    mask = sqr_mask[y: y + crop_size, x: x + crop_size]
 
-    image = cv2.resize(image, (patch_size[1], patch_size[0]), interpolation=cv2.INTER_CUBIC)
-    mask = cv2.resize(mask, (patch_size[1], patch_size[0]), interpolation=cv2.INTER_CUBIC)
+    image = cv2.resize(image, (patch_size[1], patch_size[0]), interpolation=cv2.INTER_LINEAR)
+    mask = cv2.resize(mask, (patch_size[1], patch_size[0]), interpolation=cv2.INTER_LINEAR)
 
     return image,mask
 
-def pad_patch(image, mask,patch_size)
+def pad_patch(image, mask,patch_size):
     h, w = image.shape[:2]
     max_size = max(h, w)
     min_size = max_size // 2
@@ -100,11 +100,11 @@ def pad_patch(image, mask,patch_size)
     sqr_mask = np.zeros((max_size, max_size), np.float32)
 
     if h >= w:
-            sqr_img[:, (h - w) // 2: (h - w) // 2 + w] = image
-            sqr_mask[:, (h - w) // 2: (h - w) // 2 + w] = mask
-        else:
-            sqr_img[(w - h) // 2: (w - h) // 2 + h, :] = image
-            sqr_mask[(w - h) // 2: (w - h) // 2 + h, :] = mask
+        sqr_img[:, (h - w) // 2: (h - w) // 2 + w] = image
+        sqr_mask[:, (h - w) // 2: (h - w) // 2 + w] = mask
+    else:
+        sqr_img[(w - h) // 2: (w - h) // 2 + h, :] = image
+        sqr_mask[(w - h) // 2: (w - h) // 2 + h, :] = mask
 
     image = cv2.resize(image, (patch_size[1], patch_size[0]), interpolation=cv2.INTER_CUBIC)
     mask = cv2.resize(mask, (patch_size[1], patch_size[0]), interpolation=cv2.INTER_CUBIC)
@@ -460,11 +460,11 @@ if __name__ == '__main__':
     #     generator_random_trimap(img_mask,i)
 
     ### test random_rescale_image_and_mask()
-    image  = cv2.imread("./temp/image/supervisely5641.jpg",1)
-    mask  = cv2.imread("./temp/mask/supervisely5641.png",0)
-    image,mask = random_rescale_image_and_mask(image,mask)
-    cv2.imwrite("./temp/image/image_new.png",image)
-    cv2.imwrite("./temp/mask/mask_new.png",mask)
+    mask  = cv2.imread("/home/datalab/ex_disk1/bulang/segmentation_models/checkpoint/FPN_res50_20190430/vis_train_pair_1/total_1_4112_trimap.png",0)
+    print(mask.shape)
+    trimap = random_trimap(mask)
+    print(trimap.shape)
+    cv2.imwrite("/home/datalab/ex_disk1/bulang/segmentation_models/checkpoint/FPN_res50_20190430/vis_train_pair_1/total_4112_result_trimap.png",trimap)
 
 
 
