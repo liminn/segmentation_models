@@ -113,7 +113,6 @@ class ValidGen(Sequence):
 
     def __getitem__(self, idx):
         i = idx * self.batch_size
-        # length为当前batch的大小
         batch_length = min(self.batch_size, (len(self.names) - i))
         # batch_x = np.empty((batch_length, self.img_rows, self.img_cols, 3), dtype=np.float32)
         # batch_y = np.empty((batch_length, self.img_rows, self.img_cols, self.num_classes), dtype=np.uint8)
