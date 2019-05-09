@@ -78,10 +78,8 @@ if __name__ == '__main__':
     #callbacks = [tensor_board, model_checkpoint, early_stop, reduce_lr]
     callbacks = [tensor_board, model_checkpoint, reduce_lr, csv_log]
 
-    # Optimizer
-    Adam = Adam(lr=cfg["TRAINNING"]["INITIAL_LR"])
-
     # Compile
+    Adam = Adam(lr=cfg["TRAINNING"]["INITIAL_LR"])
     if(cfg["MODEL"]["NUM_CLASSES"]==2):
         loss = 'binary_crossentropy'
         #loss = bce_jaccard_loss
